@@ -58,6 +58,10 @@ public class User {
     @JsonIgnoreProperties({"user","parentSubject","subSubjects","content"})
     private Set<Subject> subjects = new HashSet<>();
 
+    @OneToMany(mappedBy = "user",cascade = {CascadeType.REMOVE,CascadeType.MERGE,CascadeType.PERSIST})
+    @JsonIgnoreProperties({"user","parentSubject","subSubjects","content"})
+    private Set<Records> records = new HashSet<>();
+
     public Timestamp getCreateTime() {
         return createTime;
     }

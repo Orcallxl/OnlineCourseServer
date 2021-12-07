@@ -1,8 +1,8 @@
 package errortocorrect.judge.task;
 
-import errortocorrect.dto.RecordDto;
+import errortocorrect.dto.CommitDto;
 
 public interface AsyncService {
 
-    void executeAsync(RecordDto judgeDto);
+    void executeAsync(CommitDto judgeDto);
 }

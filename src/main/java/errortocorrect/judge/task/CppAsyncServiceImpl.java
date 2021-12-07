@@ -1,6 +1,6 @@
 package errortocorrect.judge.task;
 
-import errortocorrect.dto.RecordDto;
+import errortocorrect.dto.CommitDto;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.scheduling.annotation.Async;
@@ -16,7 +16,7 @@ public class CppAsyncServiceImpl implements AsyncService{
     private static final Logger logger = LoggerFactory.getLogger(CppAsyncServiceImpl.class);
     @Override
     @Async("asyncServiceExecutor")
-    public void executeAsync(RecordDto dto) {
+    public void executeAsync(CommitDto dto) {
         String seq = UUID.randomUUID().toString();
         logger.info("Start cpp task");
 

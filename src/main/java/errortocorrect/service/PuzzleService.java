@@ -107,6 +107,8 @@ public class PuzzleService {
 
     }
 
+
+
     public void deletePuzzle(PuzzleDto puzzleDto, Long uid) throws CannotDeleteException, NotFoundException {
 //        Exp exp = expRepository.findByExpId(puzzleDto.getExpId());
 //        if(exp == null)

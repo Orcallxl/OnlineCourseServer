@@ -23,6 +23,11 @@ public class ExpController {
     @Autowired
     ExpService expService;
 
+    @RequestMapping(value = "/all-exps", method = RequestMethod.GET)
+    public AjaxResult allExps() {
+        return AjaxResult.success(expService.findALLExps());
+    }
+
     @RequestMapping(value = "/course-exps", method = RequestMethod.POST)
     public AjaxResult courseExps(@RequestBody CourseDto courseDto) {
         return AjaxResult.success(expService.findCourseExps(courseDto));

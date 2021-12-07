@@ -7,6 +7,8 @@ import org.springframework.data.jpa.domain.support.AuditingEntityListener;
 
 import javax.persistence.*;
 import java.sql.Timestamp;
+import java.util.HashSet;
+import java.util.Set;
 
 @Entity
 @Table(name = "puzzle")
@@ -93,7 +95,22 @@ public class Puzzle {
     @JoinColumn(name = "course_id")
     private Course course;
 
+    @OneToMany(mappedBy = "puzzle",cascade = {CascadeType.REMOVE,CascadeType.MERGE,CascadeType.PERSIST})
+    @JsonIgnoreProperties({"puzzle"})
+    private Set<TestCase> testCases = new HashSet<>();
 
+    @OneToMany(mappedBy = "puzzle",cascade = {CascadeType.REMOVE,CascadeType.MERGE,CascadeType.PERSIST})
+    @JsonIgnoreProperties({"puzzle"})
+    private Set<Records> records = new HashSet<>();
+
+
+    public Set<TestCase> getTestCases() {
+        return testCases;
+    }
+
+    public void setTestCases(Set<TestCase> testCases) {
+        this.testCases = testCases;
+    }
 
     public Course getCourse() {
         return course;

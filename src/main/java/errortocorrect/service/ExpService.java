@@ -64,4 +64,8 @@ public class ExpService {
     public Exp findExp(ExpDto expDto) {
         return expRepository.findByExpId(expDto.getExpId());
     }
+
+    public List<Exp> findALLExps() {
+        return expRepository.findAll();
+    }
 }

@@ -1,5 +1,6 @@
 package errortocorrect.entity;
 
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import org.springframework.data.annotation.CreatedDate;
 import org.springframework.data.annotation.LastModifiedDate;
 import org.springframework.data.jpa.domain.support.AuditingEntityListener;
@@ -30,7 +31,7 @@ public class Records {
     private Timestamp commitDate;
 
     @Column(name = "result")
-    private Integer result;
+    private String result;
 
 
     @Column(name = "time_consume")
@@ -39,20 +40,33 @@ public class Records {
     @Column(name = "mem_consume")
     private Double memConsume;
 
+    @Column(name = "max_time_consume")
+    private Double maxTimeConsume;
+
+    @Column(name = "max_mem_consume")
+    private Double maxMemConsume;
+
     @Column(name = "lang")
     private String lang;
 
-    @Column(name = "user_id")
-    private Long userId;
+    @ManyToOne(fetch = FetchType.EAGER,cascade = {CascadeType.MERGE,CascadeType.PERSIST})
+    @JoinColumn(name = "user_id")
+    @JsonIgnoreProperties({"subjects","course","password"})
+    private User user;
 
-    @Column(name = "puzzle_id")
+    @ManyToOne(fetch = FetchType.EAGER,cascade = {CascadeType.MERGE,CascadeType.PERSIST})
+    @JoinColumn(name = "puzzle_id")
+    @JsonIgnoreProperties({"user","records","testCases","exp","course"})
+
+    private Puzzle puzzle;
+
+
+    @Column(name = "puzzle_id",insertable=false,updatable=false)
     private Long puzzleId;
 
-    @Column(name = "user_name")
-    private String userName;
+    @Column(name = "user_id",insertable=false,updatable=false)
+    private Long userId;
 
-    @Column(name = "puzzle_name")
-    private String puzzleName;
 
     @Column(name = "code")
     private String code;
@@ -61,10 +75,50 @@ public class Records {
     private String info;
 
     @Column(name = "score")
-    private String score;
+    private Integer score;
 
     @Column(name = "compiler")
     private String compiler;
+
+    public Long getUserId() {
+        return userId;
+    }
+
+    public void setUserId(Long userId) {
+        this.userId = userId;
+    }
+
+    public Long getPuzzleId() {
+        return puzzleId;
+    }
+
+    public void setPuzzleId(Long puzzleId) {
+        this.puzzleId = puzzleId;
+    }
+
+    public Puzzle getPuzzle() {
+        return puzzle;
+    }
+
+    public void setPuzzle(Puzzle puzzle) {
+        this.puzzle = puzzle;
+    }
+
+    public Double getMaxTimeConsume() {
+        return maxTimeConsume;
+    }
+
+    public void setMaxTimeConsume(Double maxTimeConsume) {
+        this.maxTimeConsume = maxTimeConsume;
+    }
+
+    public Double getMaxMemConsume() {
+        return maxMemConsume;
+    }
+
+    public void setMaxMemConsume(Double maxMemConsume) {
+        this.maxMemConsume = maxMemConsume;
+    }
 
     public String getCompiler() {
         return compiler;
@@ -106,11 +160,11 @@ public class Records {
         this.commitDate = commitDate;
     }
 
-    public Integer getResult() {
+    public String getResult() {
         return result;
     }
 
-    public void setResult(Integer result) {
+    public void setResult(String result) {
         this.result = result;
     }
 
@@ -138,37 +192,17 @@ public class Records {
         this.lang = lang;
     }
 
-    public Long getUserId() {
-        return userId;
+
+
+    public User getUser() {
+        return user;
     }
 
-    public void setUserId(Long userId) {
-        this.userId = userId;
+    public void setUser(User user) {
+        this.user = user;
     }
 
-    public Long getPuzzleId() {
-        return puzzleId;
-    }
 
-    public void setPuzzleId(Long puzzleId) {
-        this.puzzleId = puzzleId;
-    }
-
-    public String getUserName() {
-        return userName;
-    }
-
-    public void setUserName(String userName) {
-        this.userName = userName;
-    }
-
-    public String getPuzzleName() {
-        return puzzleName;
-    }
-
-    public void setPuzzleName(String puzzleName) {
-        this.puzzleName = puzzleName;
-    }
 
     public String getCode() {
         return code;
@@ -186,11 +220,11 @@ public class Records {
         this.info = info;
     }
 
-    public String getScore() {
+    public Integer getScore() {
         return score;
     }
 
-    public void setScore(String score) {
+    public void setScore(Integer score) {
         this.score = score;
     }
 }

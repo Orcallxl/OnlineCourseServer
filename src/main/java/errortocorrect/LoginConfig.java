@@ -19,7 +19,10 @@ public class LoginConfig implements WebMvcConfigurer {
                 "/user/log_out",
                 "/subject/all-subject-latest",
                 "/subject/all-subject-hottest",
-
+                "/subject/all-subject-hottest-limit",
+                "/exp/*",
+                "/course/*",
+                "/rank/*",
                 "/**/*.html",                //html静态资源
                 "/**/*.js",                  //js静态资源
                 "/**/*.css",

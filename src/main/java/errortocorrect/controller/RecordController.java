@@ -1,5 +1,7 @@
 package errortocorrect.controller;
 
+import errortocorrect.dto.AjaxResult;
+import errortocorrect.dto.RecordDto;
 import errortocorrect.dto.UserDto;
 import errortocorrect.entity.Records;
 import errortocorrect.service.RecordService;
@@ -20,5 +22,10 @@ public class RecordController {
     @RequestMapping(value = "/user-records", method = RequestMethod.POST)
     public List<Records> userRecords(@RequestBody UserDto userDto) {
         return recordService.findUserRecords(userDto);
+    }
+
+    @RequestMapping(value = "/user-puzzle-records", method = RequestMethod.POST)
+    public AjaxResult userRecords(@RequestBody RecordDto recordDto) {
+        return AjaxResult.success(recordService.findUserPuzzleRecords(recordDto));
     }
 }

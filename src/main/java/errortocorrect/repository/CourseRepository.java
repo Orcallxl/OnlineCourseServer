@@ -19,4 +19,6 @@ public interface CourseRepository extends CrudRepository<Course, Integer> {
 
 
     List<Course> findByUsers_IdIsNotOrderByCreateTimeAsc(Long id);
+
+
 }

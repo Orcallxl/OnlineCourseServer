@@ -1,14 +1,21 @@
 package errortocorrect.judge;
 
+import com.alibaba.fastjson.JSON;
+import errortocorrect.dto.JudgeRetDto;
+import errortocorrect.dto.CommitDto;
 import errortocorrect.dto.JudgeDto;
-import errortocorrect.dto.RecordDto;
-import errortocorrect.dto.RunDto;
-import errortocorrect.dto.RunRetDto;
 import errortocorrect.entity.Puzzle;
+import errortocorrect.entity.TestCase;
 import errortocorrect.exception.CompileAndRunCodeException;
+import errortocorrect.exception.PuzzleNotFoundException;
+import errortocorrect.exception.TestCaseNotFoundException;
+import errortocorrect.global.Const;
+import errortocorrect.judge.pojo.JudgeResult;
 import errortocorrect.judge.task.OutputHandler;
 import errortocorrect.repository.PuzzleRepository;
+import errortocorrect.repository.TestCaseRepository;
 import errortocorrect.service.RecordService;
+import errortocorrect.util.JudgeUtil;
 import org.apache.commons.io.FileUtils;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -16,8 +23,8 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import java.io.*;
+import java.util.List;
 import java.util.UUID;
-import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
 @Service
@@ -31,145 +38,143 @@ public class CalcService {
     @Autowired
     RecordService recordService;
 
-    public JudgeDto judgeCode(RecordDto recordDto)
-    {
-        Puzzle puzzle = puzzleRepository.findById(recordDto.getPuzzleId());
-        recordService.createRecord(recordDto);
+    @Autowired
+    TestCaseRepository testCaseRepository;
 
-        RunDto runDto = new RunDto();
-        runDto.setCode(recordDto.getCode());
-        runDto.setCompiler(recordDto.getCompiler());
-        RunRetDto result = runCode(runDto);
-
-        JudgeDto judgeDto = new JudgeDto();
-
-
-        return new JudgeDto();
+    public JudgeRetDto commit(boolean commit, CommitDto commitDto) throws IOException, TestCaseNotFoundException, InterruptedException, PuzzleNotFoundException {
+        JudgeRetDto result =  judge(commitDto);;
+        if(commit)
+        {
+            recordService.createRecord(commitDto,result);
+        }
+        return result;
     }
 
 
-    public RunRetDto runCode(RunDto runDto)
-    {
-
-        RunRetDto runRetDto = new RunRetDto();
+    public JudgeRetDto judge(CommitDto commitDto) throws TestCaseNotFoundException, PuzzleNotFoundException, IOException, InterruptedException {
+        JudgeRetDto judgeRetDto = new JudgeRetDto();
         String seq = UUID.randomUUID().toString();
         try {
-            switch (runDto.getCompiler()){
-                case "cpp":
-                    String[] cppEnv = new String[] {"path=C:\\Users\\rnbor\\Desktop\\教学平台\\MinGW32\\MinGW32\\bin"};
-                    compileAndRun(runRetDto, seq, runDto.getCode(),"gb2312", cppEnv);
-                    break;
-                case "python":
-                    String[] pyEnv = new String[] {"path=C:\\Users\\rnbor\\Desktop\\教学平台\\MinGW32\\MinGW32\\bin"};
-                    compileAndRunPy(runRetDto, seq, runDto.getCode(),"utf-8", pyEnv);
-                    break;
+            switch (commitDto.getCompiler()) {
+                case 1:
+                    //编译环境
+                    String[] cppEnv = new String[]{"path=C:\\Users\\rnbor\\Desktop\\教学平台\\MinGW32\\MinGW32\\bin"};
+                    return compileAndJudge(commitDto, seq,"gb2312", cppEnv);
+
+                case 0:
+                    String[] pyEnv = new String[]{"path=C:\\Users\\rnbor\\Desktop\\教学平台\\MinGW32\\MinGW32\\bin"};
+                    return compileAndJudgePy(commitDto, seq, "utf-8", pyEnv);
                 default:
-                    throw new CompileAndRunCodeException(3, "未找到对应编译器，请切换到其他语言");
+                    throw new CompileAndRunCodeException(Const.CompilerNotFound, "未找到对应编译器，请切换到其他语言");
             }
-        }
-        catch (CompileAndRunCodeException e)
-        {
-            runRetDto.setType(e.getType());
-            runRetDto.setErrorOutput(e.getMsg());
-        }
-        finally {
+        } catch (CompileAndRunCodeException e) {
+            judgeRetDto.setResult(e.getType());
+        } finally {
             try {
-                FileUtils.deleteDirectory(new File("./"+seq));
+                FileUtils.forceDelete(new File("./" + seq));
             } catch (IOException e) {
                 e.printStackTrace();
             }
         }
-        return runRetDto;
+        return judgeRetDto;
     }
 
-    private void compileAndRun(RunRetDto runRetDto , String seq, String code, String charset, String[] env) throws CompileAndRunCodeException {
-        try {
-            //Create Folder
-            FileUtils.forceMkdir(new File("./"+seq));
-
-            //Create File
-            String paths =System.getProperty("user.dir").concat("\\").concat(seq);
-            File cppFile = new File(paths.concat("\\").concat("main.cpp"));
-
-            cppFile.createNewFile();
-            FileUtils.writeStringToFile(cppFile, code, charset);
-            File path = new File(paths);
-
-            //Compile
-
-            Process compileProcess = Runtime.getRuntime().exec("cmd /c g++ main.cpp", env, path);
-            BufferedReader compileStdInput = new BufferedReader(new
-                    InputStreamReader(compileProcess.getInputStream(), charset));
-            BufferedReader compileStdError = new BufferedReader(new
-                    InputStreamReader(compileProcess.getErrorStream(),charset));
-
-            String compileError = compileStdError.lines().collect(Collectors.joining());
-            compileProcess.waitFor();
-            if(!compileError.equals("") && compileError !=null)
-            {
-                logger.error("Compile Error, seq {}", seq);
-                throw new CompileAndRunCodeException(1, compileError);
-            }
-
-            //Run
-            Long startTime = System.currentTimeMillis();
-            Long memBefore = Runtime.getRuntime().freeMemory();
-            Process runProcess = Runtime.getRuntime().exec("./"+seq+"/a.exe");
 
 
-//            BufferedReader runStdInput = new BufferedReader(new
-//                    InputStreamReader(runProcess.getInputStream(),charset));
-//            BufferedReader runStdError = new BufferedReader(new
-//                    InputStreamReader(runProcess.getErrorStream(),charset));
-            Long memAfter = Runtime.getRuntime().freeMemory();
-            runProcess.waitFor(30, TimeUnit.SECONDS);
+    private JudgeRetDto compileAndJudge(CommitDto commitDto, String seq, String charset, String[] env) throws CompileAndRunCodeException, PuzzleNotFoundException, TestCaseNotFoundException, IOException, InterruptedException {
 
-            Long endTime = System.currentTimeMillis();
+        JudgeRetDto judgeRetDto = new JudgeRetDto();
+        //Create Folder
+        FileUtils.forceMkdir(new File("./" + seq));
 
+        //Create File
+        String paths = System.getProperty("user.dir").concat("\\").concat(seq);
+        File cppFile = new File(paths.concat("\\").concat("main.cpp"));
 
-            logger.info("seq {} time consuming: {}ms, mem consuming: {}kb",seq, endTime - startTime, ((double)memBefore-(double)memAfter)/1000);
-            runRetDto.setTimeConsuming(endTime - startTime);
-            runRetDto.setMemConsuming(((double)memBefore-(double)memAfter)/1000);
+        cppFile.createNewFile();
+        FileUtils.writeStringToFile(cppFile, commitDto.getCode(), charset);
+        File path = new File(paths);
 
-            OutputHandler stdHandler = new OutputHandler(runProcess.getInputStream(),"gb2312");
-            Thread stdThread = new Thread(stdHandler);
-            stdThread.start();
-            stdThread.join();
+        //Compile
 
-            OutputHandler errorHandler = new OutputHandler(runProcess.getErrorStream(),"gb2312");
-            Thread errorThread = new Thread(errorHandler);
-            errorThread.start();
-            errorThread.join();
+        Process compileProcess = Runtime.getRuntime().exec("cmd /c g++ main.cpp", env, path);
+        BufferedReader compileStdInput = new BufferedReader(new
+                InputStreamReader(compileProcess.getInputStream(), charset));
+        BufferedReader compileStdError = new BufferedReader(new
+                InputStreamReader(compileProcess.getErrorStream(), charset));
 
-           // String runStd = runStdInput.lines().collect(Collectors.joining());
-            String runStd = stdHandler.getOutput();
-           // String runError = runStdError.lines().collect(Collectors.joining());
-            String runError = errorHandler.getOutput();
-
-
-            if(!runError.equals("") && runError !=null)
-            {
-                logger.error("Runtime Error, seq {}", seq);
-                throw new CompileAndRunCodeException(2, runError);
-            }
-            runRetDto.setStdOutput(runStd);
-            runRetDto.setType(0);
-
-            logger.info("Success, seq {}", seq);
-
-            compileStdInput.close();
-            compileStdError.close();
-//            runStdInput.close();
-//            runStdError.close();
-
-        } catch (IOException | InterruptedException e) {
-
-            e.printStackTrace();
+        String compileError = compileStdError.lines().collect(Collectors.joining());
+        compileProcess.waitFor();
+        if (!compileError.equals("") && compileError != null) {
+            logger.error("Compile Error, seq {}", seq);
+            throw new CompileAndRunCodeException(Const.CompileError, compileError);
         }
+
+        Puzzle puzzle = puzzleRepository.findById(commitDto.getPuzzleId());
+        if (puzzle != null) {
+            List<TestCase> testCases = testCaseRepository.findByPuzzle_Id(puzzle.getId());
+            String timeLimit = puzzle.getTimeLimit().toString();
+            String memLimit = puzzle.getMemLimit().toString();
+            Double max_time = 0.0;
+            Double max_mem = 0.0;
+            Double sum_time = 0.0;
+            Double sum_mem = 0.0;
+            int sum = 0;
+
+            if (testCases.size() == 0) {
+                throw new TestCaseNotFoundException("该题目还没有测试用例！请联系管理员补充。");
+            }
+            for (TestCase testCase : testCases) {
+                String stdInput = testCase.getInput();
+                String stdOutput = testCase.getOutput();
+                String resultJson = JudgeUtil.Judge(commitDto.getCompiler().toString(), stdInput, stdOutput, timeLimit, memLimit, seq);
+                JudgeResult result = JSON.parseObject(resultJson,JudgeResult.class);
+                if (result.getResult().equals(Const.Accept)) {
+                    sum += 1;
+                } else if (result.getResult().equals(Const.WrongAnswer)) {
+                    judgeRetDto.setResult(result.getResult());
+                    judgeRetDto.setYourOutput(result.getStdOut());
+                    judgeRetDto.setExpectedOutput(testCase.getOutput());
+                } else if (result.getResult().equals(Const.RuntimeError)) {
+                    judgeRetDto.setResult(result.getResult());
+                    judgeRetDto.setRunTimeErrorOutput(result.getStdErr());
+                } else {
+                    judgeRetDto.setResult(result.getResult());
+                }
+
+                if (result.getTime() > max_time) {
+                    max_time = result.getTime();
+                }
+                if (result.getMem() > max_mem) {
+                    max_mem = result.getMem();
+                }
+                sum_time += result.getTime();
+                sum_mem += result.getMem();
+            }
+
+            if (sum == testCases.size()) {
+                judgeRetDto.setResult(Const.Accept);
+            }
+
+            judgeRetDto.setAvgMemConsuming(sum_mem / (double) testCases.size());
+            judgeRetDto.setAvgTimeConsuming((sum_time / (double) testCases.size()));
+            judgeRetDto.setMaxMemConsuming(max_mem);
+            judgeRetDto.setMaxTimeConsuming(max_time);
+            judgeRetDto.setScore((int)(((double)sum/(double)testCases.size())*100));
+        } else {
+            throw new PuzzleNotFoundException("未找到对应题目");
+        }
+
+        logger.info("Success, seq {}", seq);
+        compileStdInput.close();
+        compileStdError.close();
+        return judgeRetDto;
     }
 
-    private void compileAndRunPy(RunRetDto runRetDto, String seq, String code, String charset, String[] env)throws CompileAndRunCodeException{
+    private JudgeRetDto compileAndJudgePy(CommitDto commitDto, String seq,String charset, String[] env) throws CompileAndRunCodeException, TestCaseNotFoundException, PuzzleNotFoundException {
+        JudgeRetDto judgeRetDto = new JudgeRetDto();
         try {
+
             //Create Folder
             FileUtils.forceMkdir(new File("./" + seq));
 
@@ -178,41 +183,68 @@ public class CalcService {
             File cppFile = new File(paths.concat("\\").concat("main.py"));
 
             cppFile.createNewFile();
-            FileUtils.writeStringToFile(cppFile, code, charset);
+            FileUtils.writeStringToFile(cppFile, commitDto.getCode(), charset);
             File path = new File(paths);
 
             //Run
-            Process runProcess = Runtime.getRuntime().exec("py "+"./"+seq+"/main.py",env);
+            Puzzle puzzle = puzzleRepository.findById(commitDto.getPuzzleId());
+            if (puzzle != null) {
+                List<TestCase> testCases = testCaseRepository.findByPuzzle_Id(puzzle.getId());
+                String timeLimit = puzzle.getTimeLimit().toString();
+                String memLimit = puzzle.getMemLimit().toString();
+                Double max_time = 0.0;
+                Double max_mem = 0.0;
+                Double sum_time = 0.0;
+                Double sum_mem = 0.0;
+                int sum = 0;
 
-            runProcess.waitFor();
+                if (testCases.size() == 0) {
+                    throw new TestCaseNotFoundException("该题目还没有测试用例！请联系管理员补充。");
+                }
+                for (TestCase testCase : testCases) {
+                    String stdInput = testCase.getInput();
+                    String stdOutput = testCase.getOutput();
+                    String resultJson = JudgeUtil.Judge(commitDto.getCompiler().toString(), stdInput, stdOutput, timeLimit, memLimit, seq);
+                    JudgeResult result =  JSON.parseObject(resultJson,JudgeResult.class);
+                    if (result.getResult().equals(Const.Accept)) {
+                        sum += 1;
+                    } else if (result.getResult().equals(Const.WrongAnswer)) {
+                        judgeRetDto.setResult(result.getResult());
+                        judgeRetDto.setYourOutput(result.getStdOut());
+                        judgeRetDto.setExpectedOutput(testCase.getOutput());
+                    } else if (result.getResult().equals(Const.RuntimeError)) {
+                        judgeRetDto.setResult(result.getResult());
+                        judgeRetDto.setRunTimeErrorOutput(result.getStdErr());
+                    } else {
+                        judgeRetDto.setResult(result.getResult());
+                    }
 
-            OutputHandler stdHandler = new OutputHandler(runProcess.getInputStream(),charset);
-            Thread stdThread = new Thread(stdHandler);
-            stdThread.start();
-            stdThread.join();
+                    if (result.getTime() > max_time) {
+                        max_time = result.getTime();
+                    }
+                    if (result.getMem() > max_mem) {
+                        max_mem = result.getMem();
+                    }
+                    sum_time += result.getTime();
+                    sum_mem += result.getMem();
+                }
 
-            OutputHandler errorHandler = new OutputHandler(runProcess.getErrorStream(),charset);
-            Thread errorThread = new Thread(errorHandler);
-            errorThread.start();
-            errorThread.join();
+                if (sum == testCases.size()) {
+                    judgeRetDto.setResult(Const.Accept);
+                }
 
-            String runStd = stdHandler.getOutput();
-            String runError = errorHandler.getOutput();
-
-
-            if(!runError.equals("") && runError !=null)
-            {
-                logger.error("Runtime Error, seq {}", seq);
-                throw new CompileAndRunCodeException(2, runError);
+                judgeRetDto.setAvgMemConsuming(sum_mem / (double) testCases.size());
+                judgeRetDto.setAvgTimeConsuming((sum_time / (double) testCases.size()));
+                judgeRetDto.setMaxMemConsuming(max_mem);
+                judgeRetDto.setMaxTimeConsuming(max_time);
+                judgeRetDto.setScore((int)(((double)sum/(double)testCases.size())*100));
+            } else {
+                throw new PuzzleNotFoundException("未找到对应题目");
             }
-            runRetDto.setStdOutput(runStd);
-            runRetDto.setType(0);
-
             logger.info("Success, seq {}", seq);
-        }
-        catch (IOException | InterruptedException e)
-        {
+        } catch (IOException e) {
             e.printStackTrace();
         }
+        return judgeRetDto;
     }
 }

@@ -1,8 +1,8 @@
 package errortocorrect.controller;
 
 import errortocorrect.dto.AjaxResult;
-import errortocorrect.dto.RecordDto;
-import errortocorrect.dto.RunDto;
+import errortocorrect.dto.CommitDto;
+import errortocorrect.dto.JudgeDto;
 import errortocorrect.judge.CalcService;
 import errortocorrect.judge.task.CppAsyncServiceImpl;
 import errortocorrect.service.CourseService;
@@ -30,20 +30,23 @@ public class CalcController {
     private CppAsyncServiceImpl asyncService;
 
     @RequestMapping(value = "/run", method = RequestMethod.POST)
-    public AjaxResult runCode(@RequestBody RunDto runDto) {
-        return AjaxResult.success(calcService.runCode(runDto));
+    public AjaxResult runCode(@RequestBody CommitDto commitDto) {
+        try {
+            return AjaxResult.success(calcService.commit(false,commitDto));
+        } catch (Exception e) {
+           return  AjaxResult.error(e.getMessage());
+        }
     }
 
 
-
     @RequestMapping(value = "/commit", method = RequestMethod.POST)
-    public int commit(@RequestBody RecordDto recordDto) {
-
+    public AjaxResult commit(@RequestBody CommitDto commitDto) {
         //生成提交记录
-        calcService.judgeCode(recordDto);
-        //异步编译运行检查
-       // asyncService.executeAsync(recordDto);
-        return 0;
+        try {
+            return AjaxResult.success(calcService.commit(true,commitDto));
+        } catch (Exception e) {
+            return  AjaxResult.error(e.getMessage());
+        }
     }
 
     @RequestMapping(value = "/default-code-java", method = RequestMethod.POST)
